@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมล่าจำนวนเชิงซ้อน</title>
+<style>
+  :root { --ink:#20233a; --purple:#6c3fd1; --pink:#ff5e9c; --gold:#ffd166; --sky:#b8e7ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Tahoma,"Noto Sans Thai",sans-serif; color:var(--ink); background:linear-gradient(135deg,#fff5d9,#ffe0ed 48%,#dff4ff); min-height:100vh; }
+  .wrap { max-width:1000px; margin:auto; padding:18px; }
+  header { text-align:center; padding:8px 0 14px; }
+  h1 { margin:0 0 6px; font-size:clamp(1.6rem,4vw,2.6rem); color:#5127a8; }
+  .sub { margin:0; font-size:1rem; }
+  .rules { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:14px 0; }
+  .rule { background:#ffffffd9; border:2px solid #ffffff; border-radius:14px; padding:9px 14px; font-weight:700; box-shadow:0 4px 12px #5a377014; }
+  .rule.good { color:#087f5b; } .rule.bad { color:#c2255c; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 0; }
+  .stat { text-align:center; padding:10px; border-radius:16px; background:#fff; box-shadow:0 5px 15px #5a377018; }
+  .stat span { display:block; font-size:.9rem; color:#666; } .stat strong { font-size:clamp(1.35rem,3vw,2rem); }
+  #time.low { color:#d6336c; animation:pulse .6s infinite alternate; }
+  @keyframes pulse { to { transform:scale(1.1); } }
+  #game { position:relative; height:min(58vh,520px); min-height:350px; overflow:hidden; border:4px solid #fff; border-radius:22px; background:linear-gradient(180deg,#a9e4ff,#e7faff 72%,#fff); box-shadow:0 10px 28px #573b7a22; touch-action:manipulation; }
+  #game:before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.28; background-image:radial-gradient(#fff 2px,transparent 2px); background-size:32px 32px; }
+  .number { position:absolute; z-index:2; display:flex; align-items:center; justify-content:center; min-width:68px; min-height:58px; padding:8px 12px; border:3px solid #fff; border-radius:18px; font-size:clamp(1.05rem,2.8vw,1.5rem); font-weight:800; cursor:pointer; user-select:none; box-shadow:0 5px 12px #26344a30; animation:pop .18s ease-out; transition:transform .08s; }
+  .number:active { transform:scale(.9); }
+  .number.real { background:#ffe08a; color:#6d4b00; }
+  .number.complex { background:#cdbaff; color:#3d168d; }
+  @keyframes pop { from { transform:scale(.6); opacity:.3; } to { transform:scale(1); opacity:1; } }
+  .controls { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:14px 0 8px; }
+  button { font:inherit; font-weight:800; border:0; border-radius:14px; padding:12px 22px; cursor:pointer; box-shadow:0 4px 0 #00000018; }
+  #startBtn { background:#6c3fd1; color:#fff; } #resetBtn { background:#fff; color:#5127a8; border:2px solid #d9caff; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  #message { min-height:30px; text-align:center; font-weight:700; margin:8px 0; }
+  .feedback { position:absolute; z-index:5; pointer-events:none; font-weight:900; font-size:1.35rem; animation:floatup .7s forwards; }
+  @keyframes floatup { to { transform:translateY(-35px); opacity:0; } }
+  .end { position:absolute; z-index:10; inset:0; display:none; align-items:center; justify-content:center; text-align:center; padding:20px; background:#24143dbb; color:white; }
+  .end.show { display:flex; }
+  .endcard { background:#fff; color:var(--ink); border-radius:22px; padding:24px; max-width:400px; width:100%; box-shadow:0 10px 30px #0003; }
+  .endcard h2 { margin:0 0 8px; color:#5127a8; } .endcard strong { font-size:2.6rem; color:#6c3fd1; }
+  .hint { text-align:center; color:#4f5873; font-size:.9rem; margin:10px 0 0; }
+  @media(max-width:560px) { .wrap{padding:12px;} .stats{gap:6px;} .stat{padding:8px 4px;} #game{min-height:390px;height:55vh;} .number{min-width:60px;min-height:52px;padding:6px 9px;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎯 เกมล่าจำนวนเชิงซ้อน</h1>
+    <p class="sub">คลิกตัวเลขที่เป็น <b>จำนวนเชิงซ้อนที่ไม่ใช่จำนวนจริง</b> ให้ได้มากที่สุดใน 45 วินาที!</p>
+  </header>
+  <div class="rules">
+    <div class="rule good">🟣 จำนวนเชิงซ้อนที่ไม่ใช่จำนวนจริง: +2 คะแนน</div>
+    <div class="rule bad">🟡 จำนวนจริง: −1 คะแนน</div>
+    <div class="rule">⏱️ เวลา 45 วินาที</div>
+  </div>
+  <div class="stats">
+    <div class="stat"><span>คะแนน</span><strong id="score">0</strong></div>
+    <div class="stat"><span>เวลาที่เหลือ</span><strong id="time">45</strong></div>
+    <div class="stat"><span>คลิกถูก</span><strong id="hits">0</strong></div>
+  </div>
+  <div id="game" aria-label="พื้นที่เล่นเกม">
+    <div class="end" id="endScreen">
+      <div class="endcard">
+        <h2>หมดเวลาแล้ว! 🎉</h2>
+        <p>คะแนนของคุณ</p>
+        <strong id="finalScore">0</strong>
+        <p id="finalNote">ลองเล่นอีกครั้งเพื่อทำคะแนนให้สูงขึ้น</p>
+        <button id="againBtn">เล่นอีกครั้ง</button>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="startBtn">▶ เริ่มเกม</button>
+    <button id="resetBtn">↻ เริ่มใหม่</button>
+  </div>
+  <div id="message" aria-live="polite">กด “เริ่มเกม” แล้วคลิกจำนวนเชิงซ้อนที่ตกลงมา</div>
+  <p class="hint">ตัวอย่างจำนวนจริง: 4, −3, ½, √2, π &nbsp; | &nbsp; ตัวอย่างจำนวนเชิงซ้อน: 2+3i, −1−2i, 4i</p>
+</div>
+<script>
+(() => {
+  const game = document.getElementById('game');
+  const scoreEl = document.getElementById('score');
+  const timeEl = document.getElementById('time');
+  const hitsEl = document.getElementById('hits');
+  const message = document.getElementById('message');
+  const startBtn = document.getElementById('startBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const endScreen = document.getElementById('endScreen');
+  const finalScore = document.getElementById('finalScore');
+  const finalNote = document.getElementById('finalNote');
+  const realValues = ['4','−3','½','√2','π','0.75','−8','7/3','√5','0','12','−1.5','e'];
+  const complexValues = ['2+3i','−1−2i','4i','3−i','−2+5i','1+√2i','−3i','5+½i','−4−i','6i','2−7i','−½+2i'];
+  let score = 0, hits = 0, timeLeft = 45, running = false;
+  let spawnTimer = null, clockTimer = null, fallTimers = new Set(), spawnDelay = 850;
+
+  function clearGame() {
+    clearInterval(spawnTimer); clearInterval(clockTimer);
+    fallTimers.forEach(id => clearInterval(id)); fallTimers.clear();
+    game.querySelectorAll('.number,.feedback').forEach(el => el.remove());
+    running = false;
+  }
+  function updateStats() {
+    scoreEl.textContent = score;
+    hitsEl.textContent = hits;
+    timeEl.textContent = timeLeft;
+    timeEl.classList.toggle('low', timeLeft <= 10);
+  }
+  function showFeedback(x, y, text, good) {
+    const el = document.createElement('div');
+    el.className = 'feedback'; el.textContent = text;
+    el.style.left = Math.max(4, x) + 'px'; el.style.top = Math.max(4, y) + 'px';
+    el.style.color = good ? '#087f5b' : '#c2255c';
+    game.appendChild(el); setTimeout(() => el.remove(), 750);
+  }
+  function spawnNumber() {
+    if (!running) return;
+    const isComplex = Math.random() < 0.48;
+    const list = isComplex ? complexValues : realValues;
+    const el = document.createElement('button');
+    el.type = 'button'; el.className = 'number ' + (isComplex ? 'complex' : 'real');
+    el.textContent = list[Math.floor(Math.random() * list.length)];
+    el.setAttribute('aria-label', (isComplex ? 'จำนวนเชิงซ้อน' : 'จำนวนจริง') + ' ' + el.textContent);
+    const maxX = Math.max(0, game.clientWidth - 100);
+    el.style.left = (8 + Math.random() * Math.max(0, maxX - 8)) + 'px';
+    el.style.top = '-70px';
+    game.appendChild(el);
+    let y = -70;
+    const speed = 1.0 + Math.random() * 1.25 + (45-timeLeft)*0.012;
+    const id = setInterval(() => {
+      if (!running || !el.isConnected) { clearInterval(id); fallTimers.delete(id); return; }
+      y += speed;
+      el.style.top = y + 'px';
+      if (y > game.clientHeight + 5) {
+        el.remove(); clearInterval(id); fallTimers.delete(id);
+      }
+    }, 16);
+    fallTimers.add(id);
+    el.addEventListener('click', () => {
+      if (!running || !el.isConnected) return;
+      const x = parseFloat(el.style.left), top = parseFloat(el.style.top);
+      if (isComplex) {
+        score += 2; hits += 1;
+        message.textContent = 'ถูกต้อง! +' + 2 + ' คะแนน ✨';
+        showFeedback(x, top, '+2', true);
+      } else {
+        score -= 1;
+        message.textContent = 'นี่คือจำนวนจริง! −1 คะแนน';
+        showFeedback(x, top, '−1', false);
+      }
+      updateStats(); el.remove();
+    });
+  }
+  function endGame() {
+    clearGame(); timeLeft = 0; updateStats();
+    finalScore.textContent = score;
+    finalNote.textContent = hits + ' ครั้งที่คลิกถูกต้อง — ' + (score >= 20 ? 'ยอดเยี่ยมมาก!' : 'ฝึกอีกนิด ทำคะแนนได้ดีกว่านี้แน่นอน!');
+    endScreen.classList.add('show');
+    startBtn.disabled = false; startBtn.textContent = '▶ เล่นอีกครั้ง';
+    message.textContent = 'จบเกมแล้ว ดูคะแนนของคุณได้เลย';
+  }
+  function startGame() {
+    clearGame();
+    score = 0; hits = 0; timeLeft = 45; spawnDelay = 850;
+    updateStats(); endScreen.classList.remove('show');
+    running = true; startBtn.disabled = true; startBtn.textContent = 'กำลังเล่น…';
+    message.textContent = 'ลุยเลย! คลิกเฉพาะจำนวนเชิงซ้อนที่ไม่ใช่จำนวนจริง';
+    spawnNumber();
+    spawnTimer = setInterval(() => {
+      spawnNumber();
+      if (timeLeft < 20 && spawnDelay > 480) {
+        clearInterval(spawnTimer);
+        spawnDelay = 620;
+        spawnTimer = setInterval(spawnNumber, spawnDelay);
+      }
+    }, spawnDelay);
+    clockTimer = setInterval(() => {
+      if (!running) return;
+      timeLeft--; updateStats();
+      if (timeLeft <= 0) endGame();
+    }, 1000);
+  }
+  startBtn.addEventListener('click', startGame);
+  resetBtn.addEventListener('click', startGame);
+  document.getElementById('againBtn').addEventListener('click', startGame);
+  updateStats();
+})();
+</script>
+</body>
+</html>
